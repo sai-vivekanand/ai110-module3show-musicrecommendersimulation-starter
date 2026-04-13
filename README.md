@@ -124,11 +124,82 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+### Profile 1 — High-Energy Pop
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+```
+Profile : High-Energy Pop
+  genre=pop | mood=happy | energy=0.9 | acoustic=False
+==============================================================
+  #1  Sunrise City  (Score: 7.66)
+       genre match 'pop' (+3.0); mood match 'happy' (+2.0); energy proximity 0.82 vs 0.90 (+1.84); electronic fit (0.18) (+0.82)
+  #2  Gym Hero  (Score: 5.89)
+       genre match 'pop' (+3.0); energy proximity 0.93 vs 0.90 (+1.94); electronic fit (0.05) (+0.95)
+  #3  Rooftop Lights  (Score: 4.37)
+       mood match 'happy' (+2.0); energy proximity 0.76 vs 0.90 (+1.72); electronic fit (0.35) (+0.65)
+```
+
+Sunrise City is a correct pick — pop, happy mood, energy 0.82 (very close to the target of 0.90). Gym Hero appearing at #2 is a surprise: it is pop genre but its mood is "intense", the opposite of "happy". It ranks ahead of Rooftop Lights (#3), which correctly matches the happy mood, purely because the genre bonus of 3.0 outweighs the missed mood.
+
+### Profile 2 — Chill Lofi
+
+```
+Profile : Chill Lofi
+  genre=lofi | mood=chill | energy=0.35 | acoustic=True
+==============================================================
+  #1  Library Rain  (Score: 7.86)
+       genre match 'lofi' (+3.0); mood match 'chill' (+2.0); energy proximity 0.35 vs 0.35 (+2.00); acoustic fit (0.86) (+0.86)
+  #2  Midnight Coding  (Score: 7.57)
+       genre match 'lofi' (+3.0); mood match 'chill' (+2.0); energy proximity 0.42 vs 0.35 (+1.86); acoustic fit (0.71) (+0.71)
+  #3  Focus Flow  (Score: 5.68)
+       genre match 'lofi' (+3.0); energy proximity 0.40 vs 0.35 (+1.90); acoustic fit (0.78) (+0.78)
+```
+
+The cleanest result of any profile. Library Rain scores a perfect energy match (exact hit at 0.35) and high acousticness. The top three are all lofi — but that also means there is no variety at all.
+
+### Profile 3 — Intense Rock
+
+```
+Profile : Intense Rock
+  genre=rock | mood=intense | energy=0.95 | acoustic=False
+==============================================================
+  #1  Storm Runner  (Score: 7.82)
+       genre match 'rock' (+3.0); mood match 'intense' (+2.0); energy proximity 0.91 vs 0.95 (+1.92); electronic fit (0.10) (+0.90)
+  #2  Iron Curtain  (Score: 4.92)
+       mood match 'intense' (+2.0); energy proximity 0.97 vs 0.95 (+1.96); electronic fit (0.04) (+0.96)
+  #3  Gym Hero  (Score: 4.91)
+       mood match 'intense' (+2.0); energy proximity 0.93 vs 0.95 (+1.96); electronic fit (0.05) (+0.95)
+```
+
+Storm Runner is the only rock song in the catalog, so it wins by a wide margin. Iron Curtain (metal) and Gym Hero (pop) both earn #2/#3 through mood and energy matching — which is actually useful cross-genre discovery.
+
+### Profile 4 — Adversarial: Classical + Energetic + High Energy
+
+```
+Profile : Adversarial: Classical + Energetic + High Energy
+  genre=classical | mood=energetic | energy=0.90 | acoustic=True
+==============================================================
+  #1  Cathedral Silence  (Score: 4.61)
+       genre match 'classical' (+3.0); energy proximity 0.22 vs 0.90 (+0.64); acoustic fit (0.97) (+0.97)
+  #2  Pulse Nation  (Score: 4.03)
+       mood match 'energetic' (+2.0); energy proximity 0.90 vs 0.90 (+2.00); acoustic fit (0.03) (+0.03)
+  #3  Concrete Jungle  (Score: 4.02)
+       mood match 'energetic' (+2.0); energy proximity 0.87 vs 0.90 (+1.94); acoustic fit (0.08) (+0.08)
+```
+
+This profile is designed to expose a flaw: a user who asks for high-energy classical music. Cathedral Silence — a dreamy, near-silent piece with energy 0.22 — wins #1 purely because the genre bonus (3.0 points) overrides a terrible energy match. Pulse Nation (electronic, energetic, energy 0.90) is a much better fit in every measurable way but loses because it is not "classical."
+
+### Experiment — Weight Shift (genre 3.0→1.5, energy 2.0→4.0)
+
+Doubling the energy weight and halving the genre weight for the adversarial profile:
+
+```
+  #1  Pulse Nation  (Score: 6.03)   ← correctly ranks first now
+  #2  Concrete Jungle  (Score: 5.96)
+  #3  Storm Runner  (Score: 4.06)
+  Cathedral Silence dropped out of the top 5 entirely
+```
+
+The experiment fixes the adversarial case. However, for the High-Energy Pop profile the ranking order is identical to the baseline — Sunrise City still #1, Gym Hero still #2. This means the original weights are defensible for well-formed profiles; the adversarial case is the edge that reveals the genre weight is too absolute.
 
 ---
 
