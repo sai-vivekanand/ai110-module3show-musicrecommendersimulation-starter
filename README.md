@@ -17,17 +17,73 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+Real-world music recommenders like Spotify combine two strategies. **Collaborative filtering** studies the behavior of millions of users — likes, skips, playlist additions — and finds people with similar histories to surface songs you would never have searched for yourself. **Content-based filtering** ignores other users entirely and instead looks at a song's own attributes — genre, mood, energy level, tempo — to match what a listener has already said they prefer. Spotify's Discover Weekly blends both: collaborative signals drive discovery while content-based signals handle new users and provide explainable results. This simulator focuses entirely on the **content-based** side: it compares a user's taste profile directly to each song's attributes and scores the match, then ranks the full catalog to surface the best fits. It prioritizes **genre** as the broadest taste boundary, **mood** for emotional context, and **energy** as the most context-sensitive numerical signal.
 
-Some prompts to answer:
+### Features used by `Song`
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+The catalog (`data/songs.csv`) now contains 20 songs. Each song carries these attributes:
 
-You can include a simple diagram or bullet list if helpful.
+- `genre` — categorical style label (pop, lofi, rock, ambient, jazz, synthwave, indie pop, r&b, hip-hop, folk, classical, reggae, metal, electronic, blues, country, soul)
+- `mood` — intended emotional feel (happy, chill, intense, relaxed, focused, moody, romantic, energetic, melancholic, dreamy, nostalgic, playful)
+- `energy` — float 0–1, how energetic the track feels
+- `tempo_bpm` — beats per minute
+- `valence` — float 0–1, musical positiveness / brightness
+- `danceability` — float 0–1, how suitable the track is for dancing
+- `acousticness` — float 0–1, how acoustic vs. electronic the sound is
+
+### User Profile
+
+The recommender is driven by this taste profile dictionary:
+
+```python
+user_prefs = {
+    "genre": "rock",        # favorite genre — strongest filter
+    "mood": "intense",      # desired emotional feel right now
+    "energy": 0.85,         # target energy on a 0.0–1.0 scale
+    "likes_acoustic": False # prefers electronic/produced sounds over acoustic
+}
+```
+
+This profile can clearly distinguish "intense rock" (genre=rock, mood=intense, energy≈0.9) from "chill lofi" (genre=lofi, mood=chill, energy≈0.4) because all three dimensions — genre, mood, and energy — point in opposite directions for those two styles.
+
+### Algorithm Recipe (Scoring Rule)
+
+Each song is scored against the user profile using this formula:
+
+```
+score = (3.0 × genre_match)        # +3.0 if genre matches, else 0
+      + (2.0 × mood_match)          # +2.0 if mood matches, else 0
+      + (2.0 × energy_proximity)    # 2.0 × (1 − |song.energy − target_energy|)
+      + (1.0 × acoustic_fit)        # song.acousticness if likes_acoustic, else 1 − acousticness
+```
+
+**Why these weights?**
+Genre (3.0) is the outermost taste boundary — mismatched genre almost never produces a good recommendation regardless of other features. Mood (2.0) is the second most important signal because it captures the emotional context the user wants right now. Energy proximity (0–2.0) uses the formula `1 − |difference|` so songs *closer* to the user's target score higher — not simply louder or softer songs. Acousticness (0–1.0) is a tie-breaker that distinguishes organic, mellow sounds from electronic, produced ones.
+
+### Data Flow (Ranking Rule)
+
+```mermaid
+flowchart LR
+    A([User Profile\ngenre · mood · energy · acousticness]) --> B[Load songs.csv\n20 songs]
+    B --> C{Score each song\nusing Algorithm Recipe}
+    C --> D[energy_proximity = 1 − |diff|]
+    C --> E[genre_match +3.0\nmood_match +2.0]
+    C --> F[acoustic_fit 0–1.0]
+    D --> G[Total score per song]
+    E --> G
+    F --> G
+    G --> H[Sort all songs\nhighest score first]
+    H --> I([Top-K Recommendations\n+ explanation per song])
+```
+
+The input is the user profile. Every song in the CSV is judged individually using the Scoring Rule. The resulting scores are collected and sorted — that is the Ranking Rule. Only the top-k survive to the output.
+
+### Expected Biases
+
+- **Genre over-prioritization:** Because genre carries 3.0 points (37.5% of the maximum score of 8.0), the system may suppress excellent songs that match mood and energy perfectly but belong to a different genre. A jazz song with the exact energy and mood a rock user wants will score far lower than a mediocre rock song.
+- **Mood blind spots:** Moods like "energetic," "romantic," or "nostalgic" are only present in the expanded catalog. A user profile targeting a mood that appears in only one song will almost always return that one song at the top, regardless of other attributes.
+- **Energy neutrality:** The proximity formula is symmetric — being 0.2 above or below the target gives the same score. A user who wants calm study music but tolerates slightly higher energy would receive the same recommendations as one who wants slightly lower energy, which may not reflect real listening preferences.
+- **No diversity enforcement:** The Ranking Rule always returns the closest matches. If five lofi songs all score similarly, the top-5 could be entirely lofi with no variety, even if the user might enjoy occasional variety.
 
 ---
 
