@@ -64,16 +64,16 @@ Genre (3.0) is the outermost taste boundary — mismatched genre almost never pr
 
 ```mermaid
 flowchart LR
-    A([User Profile\ngenre · mood · energy · acousticness]) --> B[Load songs.csv\n20 songs]
-    B --> C{Score each song\nusing Algorithm Recipe}
-    C --> D[energy_proximity = 1 − |diff|]
-    C --> E[genre_match +3.0\nmood_match +2.0]
-    C --> F[acoustic_fit 0–1.0]
+    A([User Profile]) --> B[Load songs.csv]
+    B --> C{Score each song}
+    C --> D["energy: 2 x (1 - abs gap)"]
+    C --> E["genre +3.0, mood +2.0"]
+    C --> F["acoustic fit 0 to 1.0"]
     D --> G[Total score per song]
     E --> G
     F --> G
-    G --> H[Sort all songs\nhighest score first]
-    H --> I([Top-K Recommendations\n+ explanation per song])
+    G --> H[Sort by score descending]
+    H --> I([Top-K Recommendations])
 ```
 
 The input is the user profile. Every song in the CSV is judged individually using the Scoring Rule. The resulting scores are collected and sorted — that is the Ranking Rule. Only the top-k survive to the output.
