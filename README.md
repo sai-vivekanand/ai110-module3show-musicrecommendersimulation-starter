@@ -223,10 +223,9 @@ Read and complete `model_card.md`:
 
 [**Model Card**](model_card.md)
 
-Write 1 to 2 paragraphs here about what you learned:
+A recommender system turns data into predictions by reducing something as subjective as musical taste into a set of numbers, then doing arithmetic. VibeFinder assigns a score to every song based on how closely its genre, mood, energy, and acousticness match what the user stated. The song with the highest total wins. What makes this feel like a recommendation — and not just a search filter — is the energy proximity formula: rather than asking "is this high energy?", it asks "is this the *right* energy for this user right now?". That small shift from absolute values to relative closeness is what allows the same system to correctly serve a chill lofi listener at 0.35 energy and a high-energy pop listener at 0.90. The sorting step, which takes individual scores and turns them into a ranked list, is where the prediction actually happens.
 
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
+Bias enters the moment you assign weights. Choosing genre to be worth 3.0 points and mood to be worth 2.0 is a value judgment — it encodes the assumption that *what kind of music* matters more than *how the music makes you feel*. For most profiles that assumption holds, but the adversarial test (classical + energetic + high energy) revealed how badly it breaks at the edges: Cathedral Silence, a nearly silent dreamy piece, was recommended to someone who asked for high-energy music, simply because it won the genre match. In a real product serving millions of users, that kind of edge-case failure would be invisible in aggregate metrics but immediately felt by the affected users — who would likely be listeners whose musical taste doesn't fit the dominant patterns in the training data. This is where algorithmic unfairness hides: not in obviously wrong results, but in results that are wrong for the users least represented in the data the system was designed around.
 
 
 ---
